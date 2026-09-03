@@ -242,9 +242,9 @@ The app maintains a rules-derived calendar and surfaces the next three events on
 - These return raw stat lines that we run through our own scoring. If they work, they are the simplest projection source because player IDs match with no joins. One source among several, not the only one.
 
 **Free external sources (the only kind used):**
-- **nflverse** (github.com/nflverse): weekly player stats, schedules with kickoff times and byes, injuries, depth charts, rosters with `gsis_id` for joining to Sleeper. CSV and parquet on GitHub releases. Canonical stats and schedule backbone.
+- **nflverse** (github.com/nflverse): weekly player stats, injuries, depth charts, rosters with `gsis_id` for joining to Sleeper. CSV and parquet on GitHub releases. Canonical stats backbone. Schedules are not an `nflverse-data` release asset: the real file is `games.csv` in the separate `nflverse/nfldata` repo (`github.com/nflverse/nfldata/raw/master/data/games.csv`), with kickoff times and byes derivable from it (confirmed Phase 0).
 - **FantasyCalc** public API (`api.fantasycalc.com/values/current` with dynasty, superflex, 12-team, PPR parameters): trade-derived dynasty values including picks.
-- **DynastyProcess** (github.com/dynastyprocess/data): `values-players.csv` and `values-picks.csv`, KTC-derived, SF and TEP variants.
+- **DynastyProcess** (github.com/dynastyprocess/data): `values-players.csv` and `values-picks.csv`, KTC-derived, SF and TEP variants. `values-players.csv` carries no Sleeper ID, only player name and an `fp_id` (FantasyPros ID); joining to Sleeper requires `db_playerids.csv` (the ID crosswalk, has `sleeper_id` directly) via `fp_id`/`fantasypros_id`, not the values file alone (confirmed Phase 0).
 - **KeepTradeCut** has no official API. Do not scrape it. DynastyProcess carries the KTC signal.
 - No paid sources. If the free projection sources prove thin in Phase 0, blend more of them rather than buying one.
 

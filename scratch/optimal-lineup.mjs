@@ -19,7 +19,7 @@ async function loadJson(name) {
 // Reads the live scoring_settings JSON. No scoring values are hardcoded here except
 // the offense-only stat keys this league actually uses (no K/DEF slots exist, see
 // CLAUDE.md Phase 0 findings for the kicker/DST scoring mismatch).
-function scoreProjection(stats, position, scoring) {
+export function scoreProjection(stats, position, scoring) {
   if (!stats) return 0;
   const recBonusKey = `bonus_rec_${position.toLowerCase()}`;
   const recBonus = scoring[recBonusKey] || 0;
@@ -43,7 +43,7 @@ function scoreProjection(stats, position, scoring) {
 
 // Nested-slot greedy: correct here because slot eligibility nests
 // (QB slot subset of SUPER_FLEX; RB/WR/TE slots subset of FLEX subset of SUPER_FLEX).
-function buildOptimalLineup(slots, playersByPosition) {
+export function buildOptimalLineup(slots, playersByPosition) {
   const used = new Set();
   const lineup = new Array(slots.length).fill(null);
   const pools = {
@@ -81,6 +81,22 @@ function buildOptimalLineup(slots, playersByPosition) {
   });
 
   return lineup;
+}
+
+// Set difference, not index-by-index: two players both already starting who land
+// in different same-type slots (e.g. WR1 vs WR2) is not a real swap.
+// currentStarters: Set of player_id strings. lineup/startingSlots: parallel arrays
+// from buildOptimalLineup. players: map of player_id -> player meta (for bench names).
+export function computeSwapList(startingSlots, lineup, currentStarters, players) {
+  const optimalIds = new Set(lineup.filter(Boolean).map((p) => p.player_id));
+
+  const startingSlotBySlotIndex = lineup.map((p, i) => ({ p, slot: startingSlots[i] }));
+  const toStart = startingSlotBySlotIndex.filter(({ p }) => p && !currentStarters.has(p.player_id));
+  const toBench = [...currentStarters]
+    .filter((id) => !optimalIds.has(id))
+    .map((id) => players[id] || { full_name: id });
+
+  return { toStart, toBench };
 }
 
 async function main() {
@@ -139,17 +155,9 @@ async function main() {
   });
   console.log(`\n  Projected total: ${total.toFixed(2)} pts`);
 
-  // Set difference, not index-by-index: two players both already starting who land
-  // in different same-type slots (e.g. WR1 vs WR2) is not a real swap.
   console.log('\nSwap list vs current Sleeper starters:');
   const currentStarters = new Set(myRoster.starters.filter((id) => id && id !== '0'));
-  const optimalIds = new Set(lineup.filter(Boolean).map((p) => p.player_id));
-
-  const startingSlotBySlotIndex = lineup.map((p, i) => ({ p, slot: startingSlots[i] }));
-  const toStart = startingSlotBySlotIndex.filter(({ p }) => p && !currentStarters.has(p.player_id));
-  const toBench = [...currentStarters]
-    .filter((id) => !optimalIds.has(id))
-    .map((id) => players[id] || { full_name: id });
+  const { toStart, toBench } = computeSwapList(startingSlots, lineup, currentStarters, players);
 
   if (toStart.length === 0 && toBench.length === 0) {
     console.log('  None. Current Sleeper starters already match the optimal lineup.');
@@ -163,7 +171,11 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Guarded so the test file can import the exported functions above without
+// triggering a real fetch/read of scratch/data/sleeper/.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
