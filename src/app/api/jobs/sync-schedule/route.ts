@@ -6,6 +6,7 @@ import { schedule } from "@db/schema";
 import { isAuthorizedCronRequest } from "@lib/cronAuth";
 import { storeRawSnapshot } from "@lib/rawSnapshot";
 import { SEASON } from "@lib/config";
+import { etWallTimeToUtc } from "@lib/et";
 
 // Schedules are not an nflverse-data release asset (Phase 0 finding, see
 // docs/architecture.md 4.1): the real file lives in the separate nfldata repo.
@@ -19,19 +20,6 @@ interface GamesCsvRow {
   gametime: string;
   away_team: string;
   home_team: string;
-}
-
-// gametime in games.csv is a wall-clock time in US Eastern, DST-dependent, so a
-// fixed UTC offset would be wrong across the season. Resolve it per-date instead.
-function etWallTimeToUtc(dateStr: string, timeStr: string): Date {
-  const naive = new Date(`${dateStr}T${timeStr}:00Z`);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    timeZoneName: "shortOffset",
-  }).formatToParts(naive);
-  const offsetName = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT-5";
-  const offsetHours = Number(offsetName.replace("GMT", "")) || -5;
-  return new Date(naive.getTime() - offsetHours * 60 * 60 * 1000);
 }
 
 export async function POST(request: Request) {

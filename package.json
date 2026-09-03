@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test lib/engine scratch",
+    "test": "tsx --test \"lib/engine/**/*.test.ts\" \"scratch/**/*.test.mjs\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
