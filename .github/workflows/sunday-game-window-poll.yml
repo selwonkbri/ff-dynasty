@@ -1,0 +1,20 @@
+name: Sunday game-window status poll
+
+# 11:00 AM - 8:00 PM ET, every 30 minutes (architecture.md 4.4). Catches a
+# starter ruled Out shortly before kickoff, which the anti-tanking compliance
+# rule and the late-swap logic both depend on. CLAUDE.md's player-map-once-
+# daily rule has an explicit exception for this window. UTC times below are
+# EDT-correct (15:00-00:00 UTC = 11:00 AM-8:00 PM EDT); see daily-sync.yml's
+# DST note, same caveat applies.
+on:
+  schedule:
+    - cron: "*/30 15-23 * * 0"
+    - cron: "0 0 * * 1" # 8:00 PM ET Sunday = midnight UTC Monday
+  workflow_dispatch: {}
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: game-window-poll
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/game-window-poll" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

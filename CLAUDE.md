@@ -13,7 +13,7 @@ Single-user, numbers-only dynasty fantasy football decision tool for the Legacy 
 - No LLM calls. Briefs are templated text from engine output.
 - No paid services. Free tiers only. Target $0/month, $10 hard cap.
 - Mobile-first UI. Assume a phone on marginal cell service.
-- Stay far under 1,000 Sleeper calls per minute. Player map fetched at most once per day.
+- Stay far under 1,000 Sleeper calls per minute. Player map fetched at most once per day, except during Sunday game windows (roughly 11 AM to 8 PM ET), when a status-only poll runs every 30 minutes.
 
 ## Stack
 - Next.js (App Router) on Vercel Hobby

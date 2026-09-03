@@ -103,4 +103,10 @@ export type AlertPayload =
       player_name: string;
       previous_status: string | null;
       new_status: string;
+      // Set when the player was a current starter at detection time (the
+      // Sunday game-window poll): the bench player who should replace them.
+      // Null when there's no eligible bench replacement, absent (not this
+      // variant's shape at all) when the player wasn't starting in the first
+      // place (the daily job never sets this).
+      recommended_pivot?: { slot: string; player_name: string } | null;
     };
