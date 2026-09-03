@@ -1,0 +1,24 @@
+name: Daily sync
+
+# 5:00 AM ET. Cron is UTC-fixed with no DST awareness; 9:00 UTC = 5:00 AM EDT
+# (correct for the Sept 2026 season start). After the Nov 2026 DST fallback to
+# EST this drifts to 4:00 AM ET, a known limitation acceptable for Phase 1
+# (architecture.md 4.4 tolerates jobs running late; a DST-aware fix is Phase 4
+# hardening, not Week 1 survival).
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: sync-league
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/sync-league" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+      - name: sync-rosters
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/sync-rosters" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+      - name: sync-players
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/sync-players" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+      - name: sync-projections
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/sync-projections" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

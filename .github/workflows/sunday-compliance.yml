@@ -1,0 +1,17 @@
+name: Sunday compliance check
+
+# 11:00 AM ET = 15:00 UTC during EDT (see daily-sync.yml's DST note; same
+# caveat applies here).
+on:
+  schedule:
+    - cron: "0 15 * * 0"
+  workflow_dispatch: {}
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: sync-rosters
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/sync-rosters" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+      - name: compliance-check
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/compliance-check" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

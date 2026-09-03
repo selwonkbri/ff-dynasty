@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@db/client";
-import { players, injuries, rosterPlayers } from "@db/schema";
+import { players, injuries, rosterPlayers, alertsLog } from "@db/schema";
 import { isAuthorizedCronRequest } from "@lib/cronAuth";
 import { storeRawSnapshot } from "@lib/rawSnapshot";
 import { fetchPlayers, fetchState, type SleeperPlayer } from "@lib/sleeper";
@@ -152,10 +152,20 @@ export async function POST(request: Request) {
     (c) => myPlayerIds.has(c.playerId) && c.next === "Out" && c.previous !== "Out",
   );
   if (outChanges.length > 0) {
-    const names = outChanges
-      .map((c) => normalized.find((p) => p.sleeperId === c.playerId)?.fullName ?? c.playerId)
-      .join(", ");
-    await sendPushover(`Ruled Out: ${names}`, "Status change");
+    for (const c of outChanges) {
+      const name = normalized.find((p) => p.sleeperId === c.playerId)?.fullName ?? c.playerId;
+      await sendPushover(`Ruled Out: ${name}`, "Status change");
+      await db.insert(alertsLog).values({
+        type: "status_change",
+        payload: {
+          type: "status_change",
+          player_id: c.playerId,
+          player_name: name,
+          previous_status: c.previous,
+          new_status: c.next,
+        },
+      });
+    }
   }
 
   await storeRawSnapshot("sleeper", "players/nfl", {

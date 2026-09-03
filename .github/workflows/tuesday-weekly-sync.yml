@@ -1,0 +1,19 @@
+name: Tuesday weekly sync
+
+# 6:00 AM ET = 10:00 UTC during EDT (see daily-sync.yml's DST note). Data sync
+# only, no weekly brief: briefs are Phase 2/3.
+on:
+  schedule:
+    - cron: "0 10 * * 2"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: sync-matchups
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/sync-matchups" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+      - name: sync-transactions
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/sync-transactions" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
+      - name: sync-schedule
+        run: curl -sf -X POST "${{ vars.APP_URL }}/api/jobs/sync-schedule" -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
