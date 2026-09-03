@@ -104,7 +104,32 @@ test("Out and Inactive players are never started even with the highest projectio
   assert.ok(starterIds.includes("rb3"));
 });
 
-test("late swap: a locked current starter stays in place even though a higher-scoring, but also-locked, bench player is now available", () => {
+test("late swap: an unlocked bench player can still be optimized into an open slot, even though a locked, lower-scoring starter stays put in its own slot", () => {
+  // rules.md: "An owner may change the starting lineup status for a player
+  // whose game has not yet started." rb1's game has already kicked off and it
+  // occupies the only RB slot, so it cannot be bumped out of RB by anything,
+  // locked or not. But rb2's game hasn't started, so it's still movable, and
+  // FLEX (open: no current occupant) is exactly where an optimizer should put it.
+  const roster: LineupPlayer[] = [
+    p("qb1", "QB", 30, { kickoff: new Date("2026-09-13T17:00:00Z") }),
+    p("rb1", "RB", 10, { kickoff: new Date("2026-09-13T17:00:00Z") }), // locked, currently starting at RB
+    p("rb2", "RB", 25, { kickoff: new Date("2026-09-14T17:00:00Z") }), // unlocked, higher points, currently benched
+    p("wr1", "WR", 12, { kickoff: new Date("2026-09-14T17:00:00Z") }),
+    p("te1", "TE", 6, { kickoff: new Date("2026-09-14T17:00:00Z") }),
+  ];
+  const now = new Date("2026-09-13T18:00:00Z"); // after rb1's kickoff, before rb2's
+
+  // slots: QB, RB, WR, TE, FLEX, SUPER_FLEX — currently starting qb1, rb1, wr1, te1
+  const currentStarterIdsBySlotIndex = ["qb1", "rb1", "wr1", "te1", null, null];
+  const result = computeLateSwapLineup(SLOTS, roster, currentStarterIdsBySlotIndex, now);
+
+  const bySlot = Object.fromEntries(result.starters.map((s) => [s.slot, s.player?.playerId]));
+  assert.equal(bySlot.RB, "rb1"); // locked into RB regardless of rb2's higher score
+  assert.equal(bySlot.FLEX, "rb2"); // but rb2 is unlocked, so it correctly fills the open FLEX slot
+  assert.ok(!result.bench.some((b) => b.playerId === "rb2"));
+});
+
+test("late swap: a locked bench player cannot be added even though it would outscore the locked starter", () => {
   const roster: LineupPlayer[] = [
     p("qb1", "QB", 30, { kickoff: new Date("2026-09-13T17:00:00Z") }),
     p("rb1", "RB", 10, { kickoff: new Date("2026-09-13T17:00:00Z") }), // locked, currently starting
@@ -114,7 +139,6 @@ test("late swap: a locked current starter stays in place even though a higher-sc
   ];
   const now = new Date("2026-09-13T18:00:00Z"); // after rb1/rb2's kickoff, before wr1/te1's
 
-  // slots: QB, RB, WR, TE, FLEX, SUPER_FLEX — currently starting qb1, rb1, wr1, te1
   const currentStarterIdsBySlotIndex = ["qb1", "rb1", "wr1", "te1", null, null];
   const result = computeLateSwapLineup(SLOTS, roster, currentStarterIdsBySlotIndex, now);
 
