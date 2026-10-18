@@ -14,3 +14,6 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Netlify sees the old Next.js app at the repo root and adds its Next.js
+  # plugin by default, which then fails because web/dist isn't Next.js output.
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
