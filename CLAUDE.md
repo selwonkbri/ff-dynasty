@@ -19,10 +19,10 @@ Single-user, numbers-only dynasty fantasy football decision tool for the Legacy 
 
 **Primary since 2026-10-18: the Netlify page in `web/`.** A static Vite + React + Tailwind build (its own package.json) that calls Sleeper and ESPN from the browser, runs `lib/engine` there, and saves the last good result in localStorage. No database, no scheduled jobs, no alerts, no login, no secrets, and it never fetches the 5 MB player map (the projections feed embeds the player fields it needs). `netlify.toml` at the repo root sets `base = "web"` and `NETLIFY_NEXT_PLUGIN_SKIP`, since Netlify otherwise adds its Next.js plugin for the old app at the root and the deploy fails. Engine code is shared through the `@lib` and `@db` aliases (web/vite.config.ts, web/tsconfig.json). Run it with `cd web && npm ci && npm run dev`.
 
-**Old stack, kept in the repo but not running.** The non-negotiables about the database, raw snapshots, retention and scheduled jobs apply to this stack only. Its GitHub Actions workflows are invalid YAML (unquoted `: ` inside the `run:` lines), so no scheduled job has ever run. They were left as-is when the Netlify page was added.
+**Old stack, kept in the repo but not running.** The non-negotiables about the database, raw snapshots, retention and scheduled jobs apply to this stack only. Its GitHub Actions workflow files were deleted on 2026-10-18: they were invalid YAML (unquoted `: ` inside the `run:` lines), had never run on schedule, and recorded a failed run on every push. The `/api/jobs/*` routes they called are still in the repo.
 - Next.js (App Router) on Vercel Hobby
 - Neon Postgres (free tier), DATABASE_URL injected by the Vercel Neon integration
-- Scheduled jobs: GitHub Actions workflows calling /api/jobs/* with an x-cron-secret header. Vercel Cron is an acceptable alternative if Phase 0 shows it fits within Hobby function limits. Decide with real numbers, do not assume.
+- Scheduled jobs: GitHub Actions workflows calling /api/jobs/* with an x-cron-secret header (workflow files deleted 2026-10-18, see above). Vercel Cron is an acceptable alternative if Phase 0 shows it fits within Hobby function limits. Decide with real numbers, do not assume.
 - Pushover for alerts
 - Single shared secret auth via middleware, APP_SECRET env var
 
