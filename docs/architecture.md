@@ -2,6 +2,8 @@
 
 Status: v2, decisions resolved. This is the contract for the Claude Code (Opus 5) build. One open item remains (Toilet Bowl bracket size, see 3.4); it does not block Phase 0 or Phase 1.
 
+**v3 (2026-10-18): Netlify page.** The primary way to use the tool is now a static page in `web/`, deployed on Netlify, that calls Sleeper (and ESPN for kickoff times) from the browser and runs `lib/engine` there. No database, no scheduled jobs, no alerts, no login. The Next.js + Neon + Vercel + GitHub Actions stack in sections 2, 4.4, 4.5 and 4.7 stays in the repo but isn't running: its workflow files are invalid YAML and have never been scheduled. Corrections made on 2026-10-18 are marked inline in 3.2, 3.5 and 4.1.
+
 Owner: Brian (Sleeper username `guyel`)
 League: Legacy League Dynasty, 12 teams, founded 2026, hosted on Sleeper
 Posture: three-year contention window (2026 through 2028), weighted 40/35/25, with a manual "not making the playoffs" switch that re-weights toward 2027 and 2028
@@ -78,8 +80,8 @@ Implications the engine must handle:
 
 - 10 starters: 1 QB, 2 RB, 2 WR, 1 TE, 3 FLEX (RB/WR/TE), 1 SF (QB/RB/WR/TE).
 - SF is a flexible skill slot, not a mandatory QB2 slot. The optimizer compares the best remaining QB against the best remaining RB/WR/TE for that slot every week.
-- 26-man roster in season. 12 x 26 = 312 rostered. 120 start each week. The free agent pool is thin; replacement level is computed from the **actual** unrostered pool in this league.
-- **No IR slot, no taxi squad.** Confirmed. The bench is sized to compensate. Every injured stash occupies a full roster spot, so the drop model prices roster spots explicitly and the trade module counts a long-term injured player as a roster cost, not a free hold. The sync stores Sleeper's `reserve` and `taxi` arrays anyway (expected empty) and flags if they ever populate.
+- 26-man roster in season, plus IR (below). 12 x 26 = 312 active. 120 start each week. The free agent pool is thin; replacement level is computed from the **actual** unrostered pool in this league.
+- **7 IR slots, no taxi squad.** Corrected 2026-10-18: this section used to say there was no IR slot. Sleeper's `settings.reserve_slots` is 7, Brian confirmed that's right, and 11 of 12 rosters had IR players that day. IR players don't count toward the 26 and can't start. `settings.taxi_slots` is 0.
 - Offseason: roster expands to 30 after the first free agency run (mid-March). Must be back to 26 by June 1. The tool tracks a "June 1 cutdown" view from mid-March onward.
 - After a trade, rosters may exceed 26 but lineup submission locks until you cut back. Every trade evaluation reports the post-trade roster count and, if over 26, names the recommended cut and its value loss.
 - Players lock at their own game's kickoff. Unlocked players can still be moved. This drives the late-swap logic in 4.2.
@@ -106,7 +108,7 @@ The tool never recommends a non-compliant lineup, alerts when a starter's status
 ### 3.5 Trades
 
 - Execute on acceptance.
-- Deadline: kickoff of week 12 NFL games. Reopens the Tuesday after week 17 concludes.
+- Deadline: kickoff of week 12 NFL games per rules.md V. **Unconfirmed (2026-10-18):** Sleeper's `settings.trade_deadline` is 14, and the commissioner hasn't said which is right. The tool shows "Week 12 (rules) / Week 14 (Sleeper), unconfirmed" and never either week alone. Reopens the Tuesday after week 17 concludes.
 - Two owners objecting within 48 hours triggers commissioner review. The trade module computes a **veto risk** score from the gap between public dynasty value sent and received.
 - FAAB can be included in trades (Sleeper exposes `waiver_budget` transfers in the transactions endpoint).
 
@@ -148,7 +150,7 @@ The app maintains a rules-derived calendar and surfaces the next three events on
 - Wednesday 8 PM ET: blind bid deadline.
 - Sunday 1 PM ET: FCFS closes.
 - Each game kickoff: player lock.
-- Week 12 kickoff: trade deadline.
+- Week 12 kickoff: trade deadline per rules (Sleeper says week 14, unconfirmed; see 3.5).
 - Week 14 end: regular season ends, seeding locks.
 - Weeks 15 through 17: playoffs and Toilet Bowl.
 - Tuesday after week 17: trading reopens.
@@ -240,12 +242,16 @@ The app maintains a rules-derived calendar and surfaces the next three events on
 - Weekly projections: `https://api.sleeper.app/projections/nfl/<season>/<week>?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE`
 - Weekly stats: `https://api.sleeper.app/stats/nfl/<season>/<week>?season_type=regular`
 - These return raw stat lines that we run through our own scoring. If they work, they are the simplest projection source because player IDs match with no joins. One source among several, not the only one.
+- Projections also embed a `player` object (name, position, team, `injury_status`) and a `company` field. On 2026-10-18 every entry was `rotowire`, one per player, and the embedded injury status and team matched the full player map for all 340 rostered players. So the Netlify page never fetches the 5 MB player map.
+- Schedule: `https://api.sleeper.app/schedule/nfl/regular/<season>` lists every game with `week`, `date`, `home`, `away` and a live `status` (`pre_game`, `in_game`, `complete`), but no kickoff time. The Netlify page uses it for byes, locks (a game that isn't `pre_game` is locked) and the bye planner (confirmed 2026-10-18).
 
 **Free external sources (the only kind used):**
 - **nflverse** (github.com/nflverse): weekly player stats, injuries, depth charts, rosters with `gsis_id` for joining to Sleeper. CSV and parquet on GitHub releases. Canonical stats backbone. Schedules are not an `nflverse-data` release asset: the real file is `games.csv` in the separate `nflverse/nfldata` repo (`github.com/nflverse/nfldata/raw/master/data/games.csv`), with kickoff times and byes derivable from it (confirmed Phase 0).
 - **FantasyCalc** public API (`api.fantasycalc.com/values/current` with dynasty, superflex, 12-team, PPR parameters): trade-derived dynasty values including picks.
 - **DynastyProcess** (github.com/dynastyprocess/data): `values-players.csv` and `values-picks.csv`, KTC-derived, SF and TEP variants. `values-players.csv` carries no Sleeper ID, only player name and an `fp_id` (FantasyPros ID); joining to Sleeper requires `db_playerids.csv` (the ID crosswalk, has `sleeper_id` directly) via `fp_id`/`fantasypros_id`, not the values file alone (confirmed Phase 0).
 - **KeepTradeCut** has no official API. Do not scrape it. DynastyProcess carries the KTC signal.
+- **ESPN scoreboard** (`site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=<w>&seasontype=2&dates=<season>`): kickoff times for the current week, added 2026-10-18 with Brian's OK because Sleeper's schedule has no times. Undocumented, free, no key, browser-callable (CORS `*`), about 21 KB compressed. Team codes match Sleeper's except Washington (`WSH` vs `WAS`). Its CDN returns 403 to headless-browser user agents, so automated checks must use a normal phone or desktop user agent. Optional: if it fails, the page orders games by day only and says so.
+- FantasyCalc's `values/current` is also browser-callable (CORS `*`, checked 2026-10-18), so the phase 2 trade view can call it from the page directly.
 - No paid sources. If the free projection sources prove thin in Phase 0, blend more of them rather than buying one.
 
 ### 4.2 Engine modules (pure TypeScript, unit-tested, no I/O)
@@ -429,7 +435,7 @@ Week 1 is next week and the first in-season blind bid run is Wednesday September
 | 4 | Window weights | 40/35/25 default; manual "not making the playoffs" switch re-weights to 15/45/40 (configurable) and enables Toilet Bowl mode; tool suggests, never auto-flips |
 | 5 | Alerts | Job plan in 4.4 as written, no quiet hours |
 | 6 | LLM scope | None. Numbers-only, templated briefs |
-| 7 | League confirmations | 1.13 entered in Sleeper draft; FAAB resets at the rookie draft (date varies); no IR or taxi; Toilet Bowl stated as 8 teams, does not reconcile with 6 playoff teams, Sleeper settings are truth and the mismatch is flagged until resolved |
+| 7 | League confirmations | 1.13 entered in Sleeper draft; FAAB resets at the rookie draft (date varies); no IR or taxi (IR corrected 2026-10-18: 7 IR slots, see 3.2); Toilet Bowl stated as 8 teams, does not reconcile with 6 playoff teams, Sleeper settings are truth and the mismatch is flagged until resolved |
 | 8 | Owner intel | No seeding; data-derived profiles only |
 | 9 | Notes and theses | Not in scope |
 | 10 | Access | Single shared secret |

@@ -11,6 +11,10 @@ export interface LineupPlayer {
   isBye: boolean;
   injuryStatus: string | null;
   kickoff: Date | null;
+  // Live lock state when the caller knows it (e.g. Sleeper's game status on the
+  // Netlify page). When set it wins over the kickoff-vs-now check below, since a
+  // delayed game is still unlocked after its scheduled kickoff.
+  locked?: boolean;
 }
 
 export interface LineupSlotResult {
@@ -34,7 +38,7 @@ function isEligible(p: LineupPlayer): boolean {
 }
 
 // FLEX (RB/WR/TE) and QB eligibility are disjoint siblings under SUPER_FLEX
-// (QB/RB/WR/TE), not nested inside one another — this league's FLEX never
+// (QB/RB/WR/TE), not nested inside one another: this league's FLEX never
 // admits a QB. Slots are filled narrowest-eligibility-first (QB/RB/WR/TE, then
 // FLEX, then SUPER_FLEX), which is optimal for this laminar eligibility
 // structure: every eligibility set here is either disjoint from or a superset
@@ -49,6 +53,12 @@ const SLOT_ELIGIBILITY: Partial<Record<RosterSlot, ReadonlySet<string>>> = {
   FLEX: new Set(["RB", "WR", "TE"]),
   SUPER_FLEX: new Set(["QB", "RB", "WR", "TE"]),
 };
+
+// Same eligibility the optimizer uses, exported so pivot and free agent logic
+// can't drift from it.
+export function canFill(slot: RosterSlot, position: LineupPlayer["position"]): boolean {
+  return SLOT_ELIGIBILITY[slot]?.has(position) ?? false;
+}
 
 function fillSlots(
   slots: RosterSlot[],
@@ -103,7 +113,8 @@ export function computeLateSwapLineup(
   currentStarterIdsBySlotIndex: (string | null)[],
   now: Date,
 ): LineupResult {
-  const isLocked = (p: LineupPlayer) => p.kickoff !== null && p.kickoff.getTime() <= now.getTime();
+  const isLocked = (p: LineupPlayer) =>
+    p.locked ?? (p.kickoff !== null && p.kickoff.getTime() <= now.getTime());
   const byId = new Map(roster.map((p) => [p.playerId, p]));
 
   const assignments: (LineupPlayer | null)[] = new Array(slots.length).fill(null);

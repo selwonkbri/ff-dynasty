@@ -56,6 +56,7 @@ export interface SleeperMatchup {
   starters: string[];
   players: string[];
   players_points: Record<string, number> | null;
+  starters_points?: number[] | null; // aligned with starters
 }
 
 export function fetchMatchups(leagueId: string, week: number) {
@@ -124,10 +125,40 @@ export function fetchState() {
 export interface SleeperProjection {
   player_id: string;
   stats: StatLine;
+  // Present on the live feed (confirmed 2026-10-18): the source company (only
+  // "rotowire" so far) and an embedded player object whose injury_status and
+  // team matched the full 5 MB player map for all 340 rostered players, which
+  // is why the Netlify page never fetches the player map.
+  company?: string;
+  team?: string | null;
+  opponent?: string | null;
+  player?: {
+    first_name?: string;
+    last_name?: string;
+    position?: string;
+    team?: string | null;
+    injury_status?: string | null;
+  };
 }
 
 // Undocumented, confirmed working in Phase 0 (CLAUDE.md).
 export function fetchProjections(season: number, week: number) {
   const url = `https://api.sleeper.app/projections/nfl/${season}/${week}?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE`;
   return getJson<SleeperProjection[]>(url);
+}
+
+// Undocumented, confirmed 2026-10-18: every regular-season game with a live
+// status, but only a date, no kickoff time (kickoff times come from ESPN, see
+// lib/espn.ts).
+export interface SleeperGame {
+  game_id: string;
+  week: number;
+  date: string; // YYYY-MM-DD
+  home: string;
+  away: string;
+  status: "pre_game" | "in_game" | "complete" | string;
+}
+
+export function fetchSchedule(season: number) {
+  return getJson<SleeperGame[]>(`https://api.sleeper.app/schedule/nfl/regular/${season}`);
 }

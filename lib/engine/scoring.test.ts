@@ -71,3 +71,26 @@ test("unscored stat keys (kicker/DST block) never contribute, even though presen
   // since this league has no K/DEF roster slots (CLAUDE.md Phase 0 finding).
   assert.equal(points, 2 * 1.0 + 10 * 0.1);
 });
+
+test("identical receiving lines score RB 0.5, WR 1.0, TE 1.25 per reception under the live settings", () => {
+  // Receptions only: the totals are exactly the per-reception rates times 8.
+  const recOnly = { rec: 8 };
+  const rbRec = scorePlayer(recOnly, "RB", SCORING);
+  const wrRec = scorePlayer(recOnly, "WR", SCORING);
+  const teRec = scorePlayer(recOnly, "TE", SCORING);
+  assert.equal(rbRec, 4);
+  assert.equal(wrRec, 8);
+  assert.equal(teRec, 10);
+  assert.equal(rbRec / wrRec, 0.5);
+  assert.equal(teRec / wrRec, 1.25);
+
+  // A full receiving line: yards and TDs score the same for everyone, so the
+  // totals differ only by the reception rate gap.
+  const line = { rec: 8, rec_yd: 95, rec_td: 1 };
+  const rb = scorePlayer(line, "RB", SCORING);
+  const wr = scorePlayer(line, "WR", SCORING);
+  const te = scorePlayer(line, "TE", SCORING);
+  assert.ok(rb < wr && wr < te);
+  assert.equal(wr - rb, 8 * 0.5);
+  assert.equal(te - wr, 8 * 0.25);
+});
