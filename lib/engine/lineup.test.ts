@@ -119,7 +119,7 @@ test("late swap: an unlocked bench player can still be optimized into an open sl
   ];
   const now = new Date("2026-09-13T18:00:00Z"); // after rb1's kickoff, before rb2's
 
-  // slots: QB, RB, WR, TE, FLEX, SUPER_FLEX — currently starting qb1, rb1, wr1, te1
+  // slots: QB, RB, WR, TE, FLEX, SUPER_FLEX; currently starting qb1, rb1, wr1, te1
   const currentStarterIdsBySlotIndex = ["qb1", "rb1", "wr1", "te1", null, null];
   const result = computeLateSwapLineup(SLOTS, roster, currentStarterIdsBySlotIndex, now);
 
@@ -162,6 +162,28 @@ test("late swap: open (unlocked) slots still optimize normally among unlocked pl
 
   const bySlot = Object.fromEntries(result.starters.map((s) => [s.slot, s.player?.playerId]));
   assert.equal(bySlot.WR, "wr2"); // unlocked slot re-optimized to the better unlocked option
+});
+
+test("late swap: an explicit locked flag wins over the kickoff-vs-now check in both directions", () => {
+  // Sleeper's live game status is the real lock signal on the Netlify page: a
+  // delayed game is still open after its scheduled kickoff, and a started game
+  // is locked even when no kickoff time is known.
+  const roster: LineupPlayer[] = [
+    p("qb1", "QB", 30),
+    p("rb1", "RB", 10, { kickoff: null, locked: true }), // game started, no kickoff time known
+    p("rb2", "RB", 25, { kickoff: null, locked: true }), // same: locked on the bench
+    p("wr1", "WR", 12, { kickoff: new Date("2026-09-13T17:00:00Z"), locked: false }), // delayed game
+    p("wr2", "WR", 20, { kickoff: new Date("2026-09-13T17:00:00Z"), locked: false }),
+    p("te1", "TE", 6),
+  ];
+  const now = new Date("2026-09-13T18:00:00Z"); // after the scheduled kickoff above
+  const currentStarterIdsBySlotIndex = ["qb1", "rb1", "wr1", "te1", null, null];
+  const result = computeLateSwapLineup(SLOTS, roster, currentStarterIdsBySlotIndex, now);
+
+  const bySlot = Object.fromEntries(result.starters.map((s) => [s.slot, s.player?.playerId]));
+  assert.equal(bySlot.RB, "rb1"); // locked: true keeps rb1 in place despite a null kickoff
+  assert.ok(!Object.values(bySlot).includes("rb2")); // and keeps the locked bench rb2 out
+  assert.equal(bySlot.WR, "wr2"); // locked: false lets the delayed game's WRs be re-optimized
 });
 
 test("computeSwapList flags a bench player who should start and the starter they replace", () => {

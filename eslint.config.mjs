@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Netlify page build output (web/ is linted with these rules, its bundle isn't).
+    "web/dist/**",
   ]),
 ]);
 

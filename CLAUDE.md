@@ -16,6 +16,10 @@ Single-user, numbers-only dynasty fantasy football decision tool for the Legacy 
 - Stay far under 1,000 Sleeper calls per minute. Player map fetched at most once per day, except during Sunday game windows (roughly 11 AM to 8 PM ET), when a status-only poll runs every 30 minutes.
 
 ## Stack
+
+**Primary since 2026-10-18: the Netlify page in `web/`.** A static Vite + React + Tailwind build (its own package.json) that calls Sleeper and ESPN from the browser, runs `lib/engine` there, and saves the last good result in localStorage. No database, no scheduled jobs, no alerts, no login, no secrets, and it never fetches the 5 MB player map (the projections feed embeds the player fields it needs). `netlify.toml` at the repo root sets `base = "web"`. Engine code is shared through the `@lib` and `@db` aliases (web/vite.config.ts, web/tsconfig.json). Run it with `cd web && npm ci && npm run dev`.
+
+**Old stack, kept in the repo but not running.** The non-negotiables about the database, raw snapshots, retention and scheduled jobs apply to this stack only. Its GitHub Actions workflows are invalid YAML (unquoted `: ` inside the `run:` lines), so no scheduled job has ever run. They were left as-is when the Netlify page was added.
 - Next.js (App Router) on Vercel Hobby
 - Neon Postgres (free tier), DATABASE_URL injected by the Vercel Neon integration
 - Scheduled jobs: GitHub Actions workflows calling /api/jobs/* with an x-cron-secret header. Vercel Cron is an acceptable alternative if Phase 0 shows it fits within Hobby function limits. Decide with real numbers, do not assume.
@@ -68,11 +72,23 @@ Confirmed via `scratch/fetch-sleeper.mjs` and `scratch/fetch-external.mjs` again
 
 **Exit criterion met:** `scratch/optimal-lineup.mjs` computes the optimal 10-man week 1 lineup for roster 9 from real Sleeper projections scored under the league's live `scoring_settings`, and diffs it against the current Sleeper `starters`. Result: my current Sleeper starters already match the computed optimum for week 1, so the swap list is empty. Run it after `scratch/fetch-sleeper.mjs`.
 
+## Corrections and findings (2026-10-18)
+
+Checked against the live league and data feeds while building the Netlify page.
+
+- **IR exists: 7 slots.** Sleeper's `settings.reserve_slots` is 7 and Brian confirmed it. docs/architecture.md 3.2 ("No IR slot, confirmed") was wrong and is corrected. IR players don't count toward the 26 and can't start: `lib/engine/liveContext.ts` excludes `reserve` (and `taxi`) from the lineup pool and the roster count. The old stack's Dashboard still counts IR players and would wrongly say the roster is over 26 (Mac's Mates had 29 players, 6 on IR, 23 active). Not fixed there.
+- **Trade deadline mismatch, unconfirmed.** rules.md V says week 12; Sleeper's `settings.trade_deadline` is 14. The commissioner hasn't said which is right. `RULES_TRADE_DEADLINE_WEEK = 12` in `lib/engine/mismatches.ts`; the page always shows "Week 12 (rules) / Week 14 (Sleeper), unconfirmed", never one week alone.
+- **Matches, no flag:** `playoff_week_start` 15, `playoff_teams` 6, `waiver_budget` 1000. `roster.settings.waiver_budget_used` is present (Mac's Mates: 38, so $962 left).
+- **Projections feed has one source.** All 3,117 entries were `company: "rotowire"`, one per player. `dedupeProjections` keeps rotowire if a second source ever appears. The embedded `player` object's injury status and team matched the full player map for all 340 rostered players.
+- **Scoring confirmed live:** `rec` 0.5, `bonus_rec_wr` 0.5, `bonus_rec_te` 0.75, no `bonus_rec_rb`, so RB 0.5, WR 1.0, TE 1.25 per reception (tested in `lib/engine/scoring.test.ts`).
+- **ESPN added for kickoff times** (Sleeper's schedule feed has dates and live status but no times). ESPN's CDN returns 403 to headless-browser user agents, so Playwright checks must use a phone profile such as `devices["iPhone 13"]` and full Chromium (`channel: "chromium"`). The page falls back to ordering by game day if ESPN fails.
+
 ## Working rhythm
 - One vertical slice per session. Commit before starting.
 - Plan mode for anything structural. Show the plan before editing.
 - Run tests before declaring a slice done.
 - Brian pushes from his local clone. Stage and summarize, do not assume the push happened.
+- Netlify deploys `main`. On the free plan each production deploy costs 15 of 300 monthly credits, and sites pause when credits run out. Deploy previews and branch deploys cost no credits. Work on a branch and merge to `main` when ready. `netlify.toml`'s ignore rule skips builds that don't touch `web/`, `lib/`, `db/types.ts` or `netlify.toml`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

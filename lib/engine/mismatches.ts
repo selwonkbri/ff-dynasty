@@ -34,3 +34,25 @@ export function detectScoringMismatches(
 
   return [];
 }
+
+// rules.md V: "The trade deadline will occur at the kickoff of the week 12 NFL
+// games." Sleeper's settings.trade_deadline has been 14 since at least
+// 2026-10-18, and the commissioner hasn't said which one is right. Policy
+// lives in rules.md, but Sleeper is what actually blocks trades, so neither
+// value is shown alone as fact.
+export const RULES_TRADE_DEADLINE_WEEK = 12;
+
+export function detectTradeDeadlineMismatch(
+  sleeperTradeDeadlineWeek: number | undefined,
+  rulesTradeDeadlineWeek: number = RULES_TRADE_DEADLINE_WEEK,
+): MismatchIssue[] {
+  if (sleeperTradeDeadlineWeek === undefined || sleeperTradeDeadlineWeek === rulesTradeDeadlineWeek) {
+    return [];
+  }
+  return [
+    {
+      kind: "trade_deadline",
+      detail: `Trade deadline: Week ${rulesTradeDeadlineWeek} (rules) / Week ${sleeperTradeDeadlineWeek} (Sleeper), unconfirmed.`,
+    },
+  ];
+}
