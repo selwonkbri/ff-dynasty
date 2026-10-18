@@ -2,7 +2,7 @@
 
 Status: v2, decisions resolved. This is the contract for the Claude Code (Opus 5) build. One open item remains (Toilet Bowl bracket size, see 3.4); it does not block Phase 0 or Phase 1.
 
-**v3 (2026-10-18): Netlify page.** The primary way to use the tool is now a static page in `web/`, deployed on Netlify, that calls Sleeper (and ESPN for kickoff times) from the browser and runs `lib/engine` there. No database, no scheduled jobs, no alerts, no login. The Next.js + Neon + Vercel + GitHub Actions stack in sections 2, 4.4, 4.5 and 4.7 stays in the repo but isn't running: its workflow files are invalid YAML and have never been scheduled. Corrections made on 2026-10-18 are marked inline in 3.2, 3.5 and 4.1.
+**v3 (2026-10-18): Netlify page.** The primary way to use the tool is now a static page in `web/`, deployed on Netlify, that calls Sleeper (and ESPN for kickoff times) from the browser and runs `lib/engine` there. No database, no scheduled jobs, no alerts, no login. The Next.js + Neon + Vercel + GitHub Actions stack in sections 2, 4.4, 4.5 and 4.7 stays in the repo but isn't running: its workflow files were invalid YAML, never ran on schedule, and were deleted on 2026-10-18 (the `/api/jobs/*` routes remain). Corrections made on 2026-10-18 are marked inline in 3.2, 3.5 and 4.1.
 
 Owner: Brian (Sleeper username `guyel`)
 League: Legacy League Dynasty, 12 teams, founded 2026, hosted on Sleeper
